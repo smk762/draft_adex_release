@@ -3,6 +3,8 @@ import os
 import json
 import requests
 from dotenv import load_dotenv
+from lib_color import *
+
 load_dotenv()
 
 
@@ -40,7 +42,7 @@ def check_release_exists(release_name):
     # "draft" True
     for release in r:
         if release["name"] == release_name:
-            print(f"A release with the name '{release_name}' already exists at {release['html_url']}!")
+            status_print(f"A release with the name '{release_name}' already exists at {release['html_url']}!")
             return True
     return False
 
@@ -50,10 +52,11 @@ def create_release(owner, repo, data):
     url = f"{base_url}/repos/{owner}/{repo}/releases"
     r = gh.post(url, data=data)
     if 'html_url' in r.json():
-        print(r.json()['html_url'])
+        success_print(f"Draft release created at {r.json()['html_url']}")
     else:
-        print(data)
-        print(r.json())
+        error_print("Error creating release!")
+        error_print(data)
+        error_print(r.json())
 
 
 def get_run_branch(run_url):

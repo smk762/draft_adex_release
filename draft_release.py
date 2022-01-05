@@ -8,6 +8,7 @@ import io
 import lib_virustotal
 import lib_github
 from lib_github import gh
+from lib_color import *
 
 
 def get_formatted_name(name):
@@ -54,8 +55,9 @@ def get_formatted_name(name):
 
 
 # Get archives from GH run
-RUN_NUMBER = input("Enter Github run number: ")
-VERSION = input("Enter release version: ")
+print("")
+RUN_NUMBER = color_input("Enter Github run number: ")
+VERSION = color_input("Enter release version: ")
 REPO = "atomicDEX-Desktop"
 OWNER = "smk762"
 KP_OWNER = "KomodoPlatform"
@@ -66,11 +68,11 @@ run_html_url = f"https://github.com/{KP_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
 artefacts_url = f"{run_url}/artifacts"
 release_branch = lib_github.get_run_branch(run_url)
 if not release_branch:
-    print(f"{run_html_url} is not valid!")
+    error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
 formatted_names = []
-print(f"Getting archives from {run_html_url}...")
+status_print(f"Getting archives from {run_html_url}...")
 r = gh.get(artefacts_url)
 
 for a in r.json()['artifacts']:
@@ -81,12 +83,12 @@ for a in r.json()['artifacts']:
     if not formatted_name.endswith('.tar.zst'):
         formatted_names.append(formatted_name)
         if not os.path.exists(formatted_name):
-            print(f"Downloading {a['name']} ({formatted_name})...")
+            status_print(f"Downloading {a['name']} ({formatted_name})...")
             r = gh.get(archive_download_url)
             with open(formatted_name, "wb") as f:
                 f.write(r.content)
         else:
-            print(f"{formatted_name} already exists in this folder!")
+            status_print(f"{formatted_name} already exists in this folder!")
 
 
 formatted_names.sort()
@@ -101,7 +103,7 @@ release_body = "### Release Notes\n\n\
 |--------|-------------|"
 
 for name in formatted_names:
-    print(f"Getting hash for {name}")
+    status_print(f"Getting hash for {name}")
     vt_hash = lib_virustotal.get_vt_hash(name)
     release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
 
@@ -118,8 +120,8 @@ release_data = {
 }
 
 if not lib_github.check_release_exists(release_name):
-    print(f"Release name: {release_name}")
-    print(f"Release tag: {release_tag}")
-    print(f"Release branch: {release_branch}")
-    print(release_body)
+    table_print(f"Release name: {release_name}")
+    table_print(f"Release tag: {release_tag}")
+    table_print(f"Release branch: {release_branch}")
+    table_print(release_body)
     lib_github.create_release(f"{OWNER}", f"{REPO}", json.dumps(release_data))

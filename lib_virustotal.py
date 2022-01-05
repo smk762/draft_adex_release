@@ -9,6 +9,7 @@ from pprint import pprint
 import requests
 from virustotal_python import Virustotal
 from dotenv import load_dotenv
+from lib_color import *
 
 load_dotenv()
 SCRIPT_PATH = sys.path[0]
@@ -47,26 +48,26 @@ def get_sha256(analysis_identifier):
     i = 0
     while not r.json()["data"]:
         i += 1
-        print(f"Data result is empty, trying again ({i}/5)")
+        info_print(f"Data result is empty, trying again ({i}/5)")
         time.sleep(20)
         r = requests.request("GET", url, headers=HEADERS)
 
         if i == 5:
-            print("==================================")
-            print("Unable to get id after 5 tries...")
-            print(r)
-            print(r.json())
-            print("==================================")
+            error_print("==================================")
+            error_print("Unable to get id after 5 tries...")
+            error_print(r)
+            error_print(r.json())
+            error_print("==================================")
             return None
 
     if "id" in r.json()["data"]:
         return r.json()['data']['id']
 
-    print("==================================")
-    print("No ID in analysis item data")
-    print(r)
-    print(r.json())
-    print("==================================")
+    error_print("==================================")
+    error_print("No ID in analysis item data")
+    error_print(r)
+    error_print(r.json())
+    error_print("==================================")
     return None
     
 
@@ -101,7 +102,7 @@ def get_vt_hash(file):
         sha256_sum = calc_sha256(file)
 
         if not does_report_exist(sha256_sum):
-            print(f"Submitting {file} to VirusTotal...")
+            info_print(f"Submitting {file} to VirusTotal...")
             ts = time.time()
             url = get_large_upload_url()
 
@@ -123,28 +124,11 @@ def get_vt_hash(file):
                 time.sleep(15)
             ts = time.time()
         else:
-            print(f"Report for {file} already available!")
+            status_print(f"Report for {file} already available!")
 
-        print(f"https://www.virustotal.com/gui/file/{sha256_sum}")
+        success_print(f"https://www.virustotal.com/gui/file/{sha256_sum}")
         return sha256_sum
 
     except Exception as e:
-        print(f"Error: {e}")
+        error_print(f"Error: {e}")
         return "Failed"
-
-if __name__ == '__main__':
-
-    files = []
-
-    for file in pathlib.Path(SCRIPT_PATH).iterdir():
-        if f"{file}".endswith('.zip') and f"{file}".find('-0.5') > -1:
-            files.append(f"{file}")
-
-    print(files)
-
-    for file in files:
-        print("------------------------------")
-        get_vt_hash(file)
-        print(file)
-
-
