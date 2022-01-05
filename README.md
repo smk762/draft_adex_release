@@ -17,3 +17,4 @@ A simple script to translate CI archives from Github Actions into a draft releas
 ## Todo
 
 - Create tag matching release
+- Add tests
