@@ -24,7 +24,7 @@ def colorize(string, color):
     if color not in colors:
         return f"{string}"
     else:
-        return f"{colors[color]} {string}'\033[0m'"
+        return f"{colors[color]} {string}\033[0m"
 
 
 def color_input(msg):
