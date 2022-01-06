@@ -35,8 +35,7 @@ def send_file_to_vt(file_with_path, large_file_url=None):
 
 def get_large_upload_url():
     url = "https://www.virustotal.com/api/v3/files/upload_url"
-
-    r = requests.request("GET", url, headers=HEADERS)
+    r = vtotal.request("files/upload_url", method="GET")
     upload_url = r.json()["data"]
     return upload_url
 
