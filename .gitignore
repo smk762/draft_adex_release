@@ -1,6 +1,7 @@
 .env
 *.zip
 *.7z
+raw*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

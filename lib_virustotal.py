@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 from lib_color import *
 
 load_dotenv()
-SCRIPT_PATH = sys.path[0]
 VIRUSTOTAL_API_KEY = os.getenv('VIRUSTOTAL_API_KEY')
 
 HEADERS = {
