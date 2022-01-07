@@ -63,8 +63,7 @@ def create_release(owner, repo, data):
 
 # https://docs.github.com/en/rest/reference/releases#upload-a-release-asset
 def upload_release_asset(upload_url, upload_data):
-    url = f"{upload_url}"
-    r = gh.post(url, data=upload_data)
+    r = gh.post(upload_url, data=upload_data)
     return r.json()
 
 
