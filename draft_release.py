@@ -112,7 +112,6 @@ for name in formatted_names:
                             zb.write(extra_file)
         shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
         os.remove(f"raw_{name}")
-        break
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
