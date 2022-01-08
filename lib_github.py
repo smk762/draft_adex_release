@@ -8,7 +8,7 @@ from lib_color import *
 load_dotenv()
 
 
-# from https://github.com/user/settings/tokens
+# from https://github.com/GH_USER/settings/tokens
 GH_USER = os.getenv('GH_USER')
 GH_EMAIL = os.getenv('GH_EMAIL')
 GH_TOKEN = os.getenv('GH_TOKEN')
@@ -19,14 +19,12 @@ gh.auth = (GH_USER, GH_TOKEN)
 base_url = "https://api.github.com"
 
 
-
 def get_recent_user_activity(username):
     return requests.get(f"{base_url}/users/{username}/events/public?per_page=100").json()
 
 
 def get_recent_repo_activity(org, repo):
     return requests.get(f"{base_url}/repos/{org}/{repo}/events?per_page=100").json()
-
 
 
 def summarise_activity_by_repo(activity=None):
@@ -38,11 +36,6 @@ def summarise_activity_by_repo(activity=None):
 
 def check_release_exists(release_name):
     r = gh.get(f"{base_url}/repos/smk762/atomicDEX-Desktop/releases").json()
-    # name
-    # body
-    # tag_name
-    # target_commitish (branch)
-    # "draft" True
     for release in r:
         if release["name"] == release_name:
             status_print(f"A release with the name '{release_name}' already exists at {release['html_url']}!")
@@ -55,7 +48,7 @@ def create_release(owner, repo, data):
     url = f"{base_url}/repos/{owner}/{repo}/releases"    
     r = gh.post(url, data=data)
     if 'html_url' in r.json():
-        success_print(f"Draft release created at {r.json()['html_url']}")
+        success_print(f"Draft release URL: {r.json()['html_url']}")
     else:
         error_print("Error creating release!")
         error_print(data)

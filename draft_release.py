@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import requests
+import shutil
 from zipfile import ZipFile
 import io
 import lib_virustotal
@@ -52,8 +53,6 @@ def get_new_name(fn, formatted_name):
     return f"{fn}.{ext}"
 
 
-
-
 # Get archives from GH run
 print("")
 RUN_NUMBER = color_input("Enter Github run number: ")
@@ -74,7 +73,6 @@ else:
     error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
-
 formatted_names = []
 status_print(f"Getting archives from {run_html_url}...")
 r = gh.get(artefacts_url)
@@ -93,11 +91,7 @@ for a in r.json()['artifacts']:
         else:
             status_print(f"raw_{formatted_name} already exists in this folder!")
 
-## TODO: Need to extract and rename files in zip and recompress
-##       and add extras like the make_executable.gif
-
 formatted_names.sort()
-
 
 for name in formatted_names:
     if os.path.exists(f"raw_{name}"):
@@ -116,6 +110,9 @@ for name in formatted_names:
                                 "make_executable.gif"
                             ]:
                             zb.write(extra_file)
+        shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
+        os.remove(f"raw_{name}")
+        break
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
@@ -152,9 +149,7 @@ if not lib_github.check_release_exists(release_name):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
     table_print(f"Release branch: {release_branch}")
-    table_print(release_body)
     release_info = lib_github.create_release(f"{OWNER}", f"{REPO}", json.dumps(release_data))
-    table_print(release_info)
     release_id = release_info["id"]
     upload_url = release_info["upload_url"].replace("{?name,label}", "")
 
@@ -172,6 +167,4 @@ if not lib_github.check_release_exists(release_name):
           ('name', f"{name}"),
           ('label', name),
         )
-        print(upload_data)
         upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, f"{SCRIPT_PATH}/{name}")
-        print(upload_reponse)
