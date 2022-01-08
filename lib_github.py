@@ -2,6 +2,7 @@
 import os
 import json
 import requests
+from github.GitRelease import GitRelease
 from dotenv import load_dotenv
 from lib_color import *
 
@@ -17,6 +18,7 @@ GH_TOKEN = os.getenv('GH_TOKEN')
 gh = requests.Session()
 gh.auth = (GH_USER, GH_TOKEN)
 base_url = "https://api.github.com"
+
 
 
 def get_recent_user_activity(username):
@@ -62,8 +64,9 @@ def create_release(owner, repo, data):
     return r.json()
 
 # https://docs.github.com/en/rest/reference/releases#upload-a-release-asset
-def upload_release_asset(upload_url, upload_data):
-    r = gh.post(upload_url, data=upload_data)
+def upload_release_asset(upload_url, upload_data, params, file_with_path):
+    files = {"file": (os.path.basename(file_with_path), open(os.path.abspath(file_with_path), "rb"))}
+    r = gh.post(upload_url, json=upload_data, params=params, files=files)
     return r.json()
 
 

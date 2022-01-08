@@ -165,8 +165,13 @@ if not lib_github.check_release_exists(release_name):
             "owner": f"{OWNER}",
             "repo": f"{REPO}",
             "release_id": release_id,
-            "name": f"{SCRIPT_PATH}/{name}", 
+            "name": f"{name}", 
             "label": name
         }
+        params = (
+          ('name', f"{name}"),
+          ('label', name),
+        )
         print(upload_data)
-        lib_github.upload_release_asset(upload_url, upload_data)
+        upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, f"{SCRIPT_PATH}/{name}")
+        print(upload_reponse)
