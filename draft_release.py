@@ -56,13 +56,13 @@ def get_new_name(fn, formatted_name):
 # Get archives from GH run
 print("")
 RUN_NUMBER = color_input("Enter Github run number: ")
-VERSION = color_input("Enter release version: ")
-REPO = "atomicDEX-Desktop"
-OWNER = "smk762"
-KP_OWNER = "KomodoPlatform"
+VERSION = color_input("Enter release version (e.g. 0.5.4): ")
+REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
+SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
+DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
 
-run_url = f"{lib_github.base_url}/repos/{KP_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
-run_html_url = f"https://github.com/{KP_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
+run_url = f"{lib_github.base_url}/repos/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
+run_html_url = f"https://github.com/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
 artefacts_url = f"{run_url}/artifacts"
 
 run_info = lib_github.get_run_info(run_url)
@@ -133,7 +133,7 @@ for name in formatted_names:
 # Draft release
 release_data = {
     "accept": "application/vnd.github.v3+json",
-    "owner": f"{OWNER}",
+    "owner": f"{DEST_OWNER}",
     "repo": f"{REPO}",
     "tag_name": release_tag,
     "target_commitish": release_branch,
@@ -148,22 +148,26 @@ if not lib_github.check_release_exists(release_name):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
     table_print(f"Release branch: {release_branch}")
-    release_info = lib_github.create_release(f"{OWNER}", f"{REPO}", json.dumps(release_data))
-    release_id = release_info["id"]
-    upload_url = release_info["upload_url"].replace("{?name,label}", "")
+    release_info = lib_github.create_release(f"{DEST_OWNER}", f"{REPO}", json.dumps(release_data))
+    if 'id' in release_info:
+        release_id = release_info["id"]
+        upload_url = release_info["upload_url"].replace("{?name,label}", "")
 
 
-    for name in formatted_names:
-        upload_data = {
-            "accept": "application/vnd.github.v3+json",
-            "owner": f"{OWNER}",
-            "repo": f"{REPO}",
-            "release_id": release_id,
-            "name": f"{name}", 
-            "label": name
-        }
-        params = (
-          ('name', f"{name}"),
-          ('label', name),
-        )
-        upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, f"{SCRIPT_PATH}/{name}")
+        for name in formatted_names:
+            upload_data = {
+                "accept": "application/vnd.github.v3+json",
+                "owner": f"{DEST_OWNER}",
+                "repo": f"{REPO}",
+                "release_id": release_id,
+                "name": f"{name}", 
+                "label": name
+            }
+            params = (
+              ('name', f"{name}"),
+              ('label', name),
+            )
+            status_print(f"Uploading {name}...")
+            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, f"{SCRIPT_PATH}/{name}")
+    else:
+        print(release_info)
