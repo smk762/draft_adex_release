@@ -2,7 +2,6 @@
 import os
 import json
 import requests
-from github.GitRelease import GitRelease
 from dotenv import load_dotenv
 from lib_color import *
 
