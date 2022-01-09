@@ -73,6 +73,41 @@ else:
     error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
+
+release_tag = f"{VERSION}-beta"
+
+tag_data = {
+    "accept": "application/vnd.github.v3+json",
+    "owner": f"{DEST_OWNER}",
+    "repo": f"{REPO}",
+    "tag": release_tag,
+    "message": f"create {release_tag}",
+    "object": f"{commit_hash}", 
+    "type": "commit",
+    "tagger": {
+        "name": lib_github.GH_USER,
+        "email": lib_github.GH_EMAIL
+    }
+}
+
+tag_resp = lib_github.create_tag(f"{DEST_OWNER}", f"{REPO}", tag_data)
+print(tag_resp)
+
+tag_sha = tag_resp["sha"]
+
+ref_data = {
+    "accept": "application/vnd.github.v3+json",
+    "owner": f"{DEST_OWNER}",
+    "repo": f"{REPO}",
+    "ref": f"refs/tags/{release_tag}",
+    "sha": f"{tag_sha}"
+}
+
+ref_resp = lib_github.create_reference(f"{DEST_OWNER}", f"{REPO}", ref_data)
+print(ref_resp)
+
+
+
 formatted_names = []
 status_print(f"Getting archives from {run_html_url}...")
 r = gh.get(artefacts_url)
@@ -115,7 +150,8 @@ for name in formatted_names:
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
-release_tag = f"{VERSION}-beta"
+
+
 release_body = "### Release Notes\n\n\
 **Features:**\n\n\
 **Enhancements:**\n\n\
@@ -148,7 +184,7 @@ if not lib_github.check_release_exists(release_name):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
     table_print(f"Release branch: {release_branch}")
-    release_info = lib_github.create_release(f"{DEST_OWNER}", f"{REPO}", json.dumps(release_data))
+    release_info = lib_github.create_release(f"{DEST_OWNER}", f"{REPO}", release_data)
     if 'id' in release_info:
         release_id = release_info["id"]
         upload_url = release_info["upload_url"].replace("{?name,label}", "")

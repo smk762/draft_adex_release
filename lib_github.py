@@ -46,7 +46,7 @@ def check_release_exists(release_name):
 # https://docs.github.com/en/rest/reference/releases#create-a-release
 def create_release(owner, repo, data):
     url = f"{base_url}/repos/{owner}/{repo}/releases"    
-    r = gh.post(url, data=data)
+    r = gh.post(url, json=data)
     if 'html_url' in r.json():
         success_print(f"Draft release URL: {r.json()['html_url']}")
     else:
@@ -70,7 +70,7 @@ def get_run_info(run_url):
 # https://docs.github.com/en/rest/reference/git#create-a-tag-object
 def create_tag(owner, repo, data):
     url = f"{base_url}/repos/{owner}/{repo}/git/tags"
-    r = gh.post(url, data=data)
+    r = gh.post(url, json=data)
     return r.json()
 
 
@@ -78,7 +78,7 @@ def create_tag(owner, repo, data):
 # https://docs.github.com/en/rest/reference/git#create-a-reference
 def create_reference(owner, repo, data):
     url = f"{base_url}/repos/{owner}/{repo}/git/refs"
-    r = gh.post(url, data=data)
+    r = gh.post(url, json=data)
     return r.json()
 
 
