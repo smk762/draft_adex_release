@@ -115,12 +115,16 @@ for a in r.json()['artifacts']:
         
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
-            r = gh.get(artifact_zip_url, verify=False, allow_redirects=True)
+            r = gh.get(artifact_zip_url)
             print(r.headers)
             print(r.encoding)
+            fn = r.headers['Content-Disposition'].split("; ")[1].replace("filename=", "")
+            print(fn)
+            print(artifact_zip_name)
+            print(fn == artifact_zip_name)
             if r.encoding is None:
                 r.encoding = 'utf-8'
-            with open(artifact_zip_name, "wb") as f:
+            with open(fn, "wb") as f:
                 f.write(r.content)
         else:
             status_print(f"{artifact_zip_name} already exists in this folder!")
