@@ -14,9 +14,9 @@ from lib_color import *
 SCRIPT_PATH = sys.path[0]
 
 def get_formatted_name(name):
-    for i in ["osx", "windows", "ubuntu"]
-    if name.find(i) > -1:
-        opsys = i
+    for i in ["osx", "windows", "ubuntu"]:
+        if name.find(i) > -1:
+            opsys = i
 
     f = name.split(".")
     fn = f[0]
@@ -40,13 +40,11 @@ def get_formatted_name(name):
         fn_std = f"{fn_std}-portable"
     return project_name, f"{fn_std}.{ext}"
 
-
 def get_new_name(fn, formatted_name):
     ext = '.'.join(fn.split(".")[-1:])
     # drop os and type
     fn = '-'.join(formatted_name.split("-")[:-2])
     return f"{fn}.{ext}"
-
 
 # Get Inputs
 print("")
@@ -117,12 +115,15 @@ for a in r.json()['artifacts']:
         
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
-            r = gh.get(artifact_zip_url)
+            r = gh.get(artifact_zip_url, verify=False, allow_redirects=True)
+            print(r.headers)
+            print(r.encoding)
+            if r.encoding is None:
+                r.encoding = 'utf-8'
             with open(artifact_zip_name, "wb") as f:
                 f.write(r.content)
         else:
             status_print(f"{artifact_zip_name} already exists in this folder!")
-
 
 for name in formatted_names:
     if os.path.exists(name):
@@ -152,8 +153,6 @@ for name in formatted_names:
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
-
-
 release_body = "### Release Notes\n\n\
 **Features:**\n\n\
 **Enhancements:**\n\n\
@@ -161,7 +160,6 @@ release_body = "### Release Notes\n\n\
 **Checksum & VirusTotal Analysis:**\n\n\
 | Link   | SHA256      |\n\
 |--------|-------------|"
-
 
 INCLUDE_VT = False
 for name in formatted_names:
@@ -183,7 +181,6 @@ release_data = {
     "prerelease": False
 }
 
-
 if not lib_github.check_release_exists(release_name):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
@@ -193,24 +190,7 @@ if not lib_github.check_release_exists(release_name):
         release_id = release_info["id"]
         upload_url = release_info["upload_url"].replace("{?name,label}", "")
 
-
         for name in formatted_names:
-            upload_data = {
-                "accept": "application/vnd.github.v3+json",
-                "owner": f"{DEST_OWNER}",
-                "repo": f"{REPO}",
-                "release_id": release_id,
-                "name": f"{name}", 
-                "label": name
-            }
-            params = (
-              ('name', f"{name}"),
-              ('label', name),
-            )
-            status_print(f"Uploading {name}...")
-            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, name)
-
-
             upload_data = {
                 "accept": "application/vnd.github.v3+json",
                 "owner": f"{DEST_OWNER}",
@@ -225,5 +205,22 @@ if not lib_github.check_release_exists(release_name):
             )
             status_print(f"Uploading {formatted_names[name]}...")
             upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
+
+            if name.find("osx") > -1:
+                upload_data = {
+                    "accept": "application/vnd.github.v3+json",
+                    "owner": f"{DEST_OWNER}",
+                    "repo": f"{REPO}",
+                    "release_id": release_id,
+                    "name": f"{name}", 
+                    "label": name
+                }
+                params = (
+                  ('name', f"{name}"),
+                  ('label', name),
+                )
+                status_print(f"Uploading {name}...")
+                upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, name)
+
     else:
         print(release_info)
