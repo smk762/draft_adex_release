@@ -17,14 +17,8 @@ def get_formatted_name(name):
     f = name.split(".")
     fn = f[0]
     ext = '.'.join(f[-1:])
+    # drops hash and qt string
     fn = fn.split("-qt-")[0]
-    fn = fn.replace('installer-osx', 'osx-installer')
-    fn = fn.replace('installer-windows', 'windows-installer')
-    if ext == "zip":
-        fn = f"{fn}-portable"
-    elif ext in ["exe", "dmg", "AppImage"]:
-        ext = "zip"
-
 
     raw_fn = fn.split("-")
     if raw_fn[0].lower() in ['gleecdex', 'dogedex', 'firodex']:
@@ -36,7 +30,7 @@ def get_formatted_name(name):
 
     fn_std = f"{project_name}-{VERSION}-beta-{opsys}"
     if "installer" in name:
-        fn_std = f"{fn_std}-installer"
+        pass
     elif "dmg" in name:
         fn_std = f"{fn_std}-dmg"
     elif "AppImage" in name:
@@ -53,7 +47,7 @@ def get_new_name(fn, formatted_name):
     return f"{fn}.{ext}"
 
 
-# Get archives from GH run
+# Get Inputs
 print("")
 RUN_NUMBER = color_input("Enter Github run number: ")
 VERSION = color_input("Enter release version (e.g. 0.5.4): ")
@@ -61,10 +55,13 @@ REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
 SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
 DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
 
+# Prepare run
 run_url = f"{lib_github.base_url}/repos/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
 run_html_url = f"https://github.com/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
 artefacts_url = f"{run_url}/artifacts"
+release_tag = f"{VERSION}-beta"
 
+# Get run info
 run_info = lib_github.get_run_info(run_url)
 if "head_branch" in run_info:
     release_branch = run_info["head_branch"]
@@ -73,9 +70,7 @@ else:
     error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
-
-release_tag = f"{VERSION}-beta"
-
+# Create tag and Reference
 tag_data = {
     "accept": "application/vnd.github.v3+json",
     "owner": f"{DEST_OWNER}",
@@ -91,8 +86,6 @@ tag_data = {
 }
 
 tag_resp = lib_github.create_tag(f"{DEST_OWNER}", f"{REPO}", tag_data)
-print(tag_resp)
-
 tag_sha = tag_resp["sha"]
 
 ref_data = {
@@ -104,40 +97,47 @@ ref_data = {
 }
 
 ref_resp = lib_github.create_reference(f"{DEST_OWNER}", f"{REPO}", ref_data)
-print(ref_resp)
 
-
-
-formatted_names = []
+# Get artifacts info
 status_print(f"Getting archives from {run_html_url}...")
 r = gh.get(artefacts_url)
 
+formatted_names = {}
+# Download artifacts
 for a in r.json()['artifacts']:
     if not a["name"].endswith('.zst'):
-        project, formatted_name = get_formatted_name(a["name"])
+        artifact_zip_name = f"{a['name']}.zip"
+        artifact_zip_url = a["archive_download_url"]
+        project, formatted_name = get_formatted_name(artifact_zip_name)
+        formatted_names.update({
+            artifact_zip_name:formatted_name
+        })
         release_name = f'{project.title().replace("dex", "DEX")} v{VERSION} beta'
-        archive_download_url = a["archive_download_url"]
-        formatted_names.append(formatted_name)
-        if not os.path.exists(f"raw_{formatted_name}"):
-            status_print(f"Downloading {a['name']} as raw_{formatted_name}...")
-            r = gh.get(archive_download_url)
-            with open(f"raw_{formatted_name}", "wb") as f:
+        
+        if not os.path.exists(artifact_zip_name):
+            status_print(f"Downloading {artifact_zip_name}...")
+            r = gh.get(artifact_zip_url)
+            with open(artifact_zip_name, "wb") as f:
                 f.write(r.content)
         else:
-            status_print(f"raw_{formatted_name} already exists in this folder!")
+            status_print(f"{artifact_zip_name} already exists in this folder!")
 
-formatted_names.sort()
 
 for name in formatted_names:
-    if os.path.exists(f"raw_{name}"):
+    if os.path.exists(name):
         # Extract 
-        with ZipFile(f"raw_{name}", 'r') as za:
-            za.extractall(f"{SCRIPT_PATH}/raw_{name}_temp")
+        with ZipFile(name, 'r') as za:
+            extract_path = f"{SCRIPT_PATH}/temp_{formatted_names[name]}"
+            za.extractall(extract_path)
+            files = os.listdir(extract_path)
             # rename as required
-            with ZipFile(f"{name}", 'w') as zb:
-                for file in os.listdir(f"{SCRIPT_PATH}/raw_{name}_temp"):
-                    new_name = get_new_name(file, name)
-                    zb.write(filename=f"{SCRIPT_PATH}/raw_{name}_temp/{file}", arcname=new_name)
+
+            status_print(f"Repackaging as {formatted_names[name]}...")
+            with ZipFile(f"{formatted_names[name]}", 'w') as zb:
+                for file in os.listdir(extract_path):
+                    #new_name = get_new_name(file, name)
+                    new_name = f"{file}"
+                    zb.write(filename=f"{extract_path}/{file}", arcname=new_name)
                     if f"{name}".find("appimage") > -1:
                         for extra_file in [
                                 "README.txt",
@@ -145,8 +145,9 @@ for name in formatted_names:
                                 "make_executable.gif"
                             ]:
                             zb.write(extra_file)
-        shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
-        os.remove(f"raw_{name}")
+
+        #shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
+        #os.remove(f"raw_{name}")
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
@@ -161,10 +162,12 @@ release_body = "### Release Notes\n\n\
 |--------|-------------|"
 
 
+INCLUDE_VT = False
 for name in formatted_names:
-    status_print(f"Getting hash for {name}")
-    vt_hash = lib_virustotal.get_vt_hash(name)
-    release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
+    if INCLUDE_VT:
+        status_print(f"Getting hash for {name}")
+        vt_hash = lib_virustotal.get_vt_hash(name)
+        release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
 
 # Draft release
 release_data = {
@@ -204,6 +207,22 @@ if not lib_github.check_release_exists(release_name):
               ('label', name),
             )
             status_print(f"Uploading {name}...")
-            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, f"{SCRIPT_PATH}/{name}")
+            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, name)
+
+
+            upload_data = {
+                "accept": "application/vnd.github.v3+json",
+                "owner": f"{DEST_OWNER}",
+                "repo": f"{REPO}",
+                "release_id": release_id,
+                "name": formatted_names[name], 
+                "label": formatted_names[name]
+            }
+            params = (
+              ('name', formatted_names[name]),
+              ('label', formatted_names[name]),
+            )
+            status_print(f"Uploading {formatted_names[name]}...")
+            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
     else:
         print(release_info)

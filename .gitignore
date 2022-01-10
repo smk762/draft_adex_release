@@ -2,6 +2,7 @@
 *.zip
 *.7z
 raw*/
+temp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

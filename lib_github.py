@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import json
 import requests
 from dotenv import load_dotenv
@@ -13,6 +14,9 @@ GH_USER = os.getenv('GH_USER')
 GH_EMAIL = os.getenv('GH_EMAIL')
 GH_TOKEN = os.getenv('GH_TOKEN')
 
+if '' in [GH_USER, GH_EMAIL, GH_TOKEN]:
+    print("Error: you need to add GH_USER, GH_EMAIL, GH_TOKEN to your .env file")
+    sys.exit()
 
 gh = requests.Session()
 gh.auth = (GH_USER, GH_TOKEN)
