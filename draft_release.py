@@ -14,30 +14,31 @@ from lib_color import *
 SCRIPT_PATH = sys.path[0]
 
 def get_formatted_name(name):
+    for i in ["osx", "windows", "ubuntu"]
+    if name.find(i) > -1:
+        opsys = i
+
     f = name.split(".")
     fn = f[0]
     ext = '.'.join(f[-1:])
+
     # drops hash and qt string
     fn = fn.split("-qt-")[0]
 
+    # handle whitelabels
     raw_fn = fn.split("-")
-    if raw_fn[0].lower() in ['gleecdex', 'dogedex', 'firodex']:
-        project_name = f"{raw_fn[0]}-desktop"
-        opsys = raw_fn[1]
-    else:
-        project_name = f"{raw_fn[0]}-{raw_fn[1]}"
-        opsys = raw_fn[2]
+    project_name = f"{raw_fn[0]}"
 
-    fn_std = f"{project_name}-{VERSION}-beta-{opsys}"
+    fn_std = f"{project_name}-desktop-{VERSION}-beta-{opsys}"
     if "installer" in name:
-        pass
+        fn_std = f"{fn_std}-installer"
     elif "dmg" in name:
         fn_std = f"{fn_std}-dmg"
     elif "AppImage" in name:
         fn_std = f"{fn_std}-appimage"
     else:
         fn_std = f"{fn_std}-portable"
-    return raw_fn[0], f"{fn_std}.{ext}"
+    return project_name, f"{fn_std}.{ext}"
 
 
 def get_new_name(fn, formatted_name):
