@@ -4,7 +4,8 @@ import sys
 import json
 import requests
 import shutil
-
+import shlex
+import subprocess
 from zipfile import ZipFile
 import io
 import lib_virustotal
@@ -49,19 +50,36 @@ def get_new_name(fn, formatted_name):
 
 # Get Inputs
 print("")
-
+'''
 RUN_NUMBER = color_input("Enter Github run number: ")
 VERSION = color_input("Enter release version (e.g. 0.5.4): ")
 REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
 SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
 DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
+
 '''
 RUN_NUMBER = 1675209975
 VERSION = "0.5.test"
 REPO = "atomicDEX-Desktop"
 SRC_OWNER = "KomodoPlatform"
 DEST_OWNER = "smk762"
-'''
+
+
+valid_token = False
+# Validate input to protect against injection
+for i in ["ghp_", "gho_", "ghu_", "ghs_", "ghr_"]:
+    if lib_github.GH_TOKEN.startswith(i):
+        valid_token = True
+
+for i in [" ", ";", "passwd", "*"]:
+    if lib_github.GH_TOKEN.find(" ") > -1:
+        valid_token = False
+
+if not valid_token:
+    print("Invalid github token!")
+    sys.exit()
+
+
 
 # Prepare run
 run_url = f"{lib_github.base_url}/repos/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
@@ -126,9 +144,11 @@ for a in r.json()['artifacts']:
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
 
-
             # This works if transfering with USB
-            os.system(f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}')
+            # os.system(f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}')
+            dl_command = f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}'
+            args = shlex.split(dl_command)
+            subprocess.run(args)
 
             # This is causing problems with extra bytes in mac archive utility
             #r = gh.head(artifact_zip_url)
@@ -231,7 +251,21 @@ if not lib_github.check_release_exists(release_name):
             # This is adding extra bytes and causing fails on mac archive utility
             # upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
 
-            os.system(f'curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token {lib_github.GH_TOKEN}" -H "Content-Type: $(file -b --mime-type {formatted_names[name]})" --data-binary @{formatted_names[name]} "{upload_url}?name=$(basename {formatted_names[name]})"')
+            args = [
+                'curl',
+                '-H',
+                'Accept: application/vnd.github.v3+json',
+                '-H',
+                f'Authorization: token {lib_github.GH_TOKEN}',
+                '-H',
+                'Content-Type: application/zip',
+                '--data-binary',
+                f'@{formatted_names[name]}',
+                f'{upload_url}?name={formatted_names[name]}'
+            ]
+            subprocess.run(args)
+
+            #os.system(f'curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token {lib_github.GH_TOKEN}" -H "Content-Type: $(file -b --mime-type {formatted_names[name]})" --data-binary @{formatted_names[name]} "{upload_url}?name=$(basename {formatted_names[name]})"')
 
     else:
         print(release_info)
