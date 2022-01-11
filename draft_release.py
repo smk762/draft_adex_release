@@ -2,8 +2,11 @@
 import os
 import sys
 import json
+import pycurl
 import requests
 import shutil
+import wget
+
 from zipfile import ZipFile
 import io
 import lib_virustotal
@@ -48,11 +51,19 @@ def get_new_name(fn, formatted_name):
 
 # Get Inputs
 print("")
+
 RUN_NUMBER = color_input("Enter Github run number: ")
 VERSION = color_input("Enter release version (e.g. 0.5.4): ")
 REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
 SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
 DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
+'''
+RUN_NUMBER = 1675209975
+VERSION = "0.5.test"
+REPO = "atomicDEX-Desktop"
+SRC_OWNER = "KomodoPlatform"
+DEST_OWNER = "smk762"
+'''
 
 # Prepare run
 run_url = f"{lib_github.base_url}/repos/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
@@ -69,7 +80,7 @@ else:
     error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
-# Create tag and Reference
+# Create tag
 tag_data = {
     "accept": "application/vnd.github.v3+json",
     "owner": f"{DEST_OWNER}",
@@ -87,6 +98,7 @@ tag_data = {
 tag_resp = lib_github.create_tag(f"{DEST_OWNER}", f"{REPO}", tag_data)
 tag_sha = tag_resp["sha"]
 
+# Create reference
 ref_data = {
     "accept": "application/vnd.github.v3+json",
     "owner": f"{DEST_OWNER}",
@@ -101,8 +113,8 @@ ref_resp = lib_github.create_reference(f"{DEST_OWNER}", f"{REPO}", ref_data)
 status_print(f"Getting archives from {run_html_url}...")
 r = gh.get(artefacts_url)
 
-formatted_names = {}
 # Download artifacts
+formatted_names = {}
 for a in r.json()['artifacts']:
     if not a["name"].endswith('.zst'):
         artifact_zip_name = f"{a['name']}.zip"
@@ -115,20 +127,28 @@ for a in r.json()['artifacts']:
         
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
-            r = gh.get(artifact_zip_url)
-            print(r.headers)
-            print(r.encoding)
-            fn = r.headers['Content-Disposition'].split("; ")[1].replace("filename=", "")
-            print(fn)
-            print(artifact_zip_name)
-            print(fn == artifact_zip_name)
-            if r.encoding is None:
-                r.encoding = 'utf-8'
-            with open(fn, "wb") as f:
-                f.write(r.content)
+
+
+            # This works if transfering with USB
+            os.system(f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}')
+
+            # This is causing problems with extra bytes in mac archive utility
+            #r = gh.head(artifact_zip_url)
+            #artifact_zip_url = r.headers["Location"]
+            #r = gh.get(artifact_zip_url)
+            #print(r.headers)
+            #fn = r.headers['Content-Disposition'].split("; ")[1].replace("filename=", "")
+            #print(fn)
+            #print(artifact_zip_name)
+            #print(fn == artifact_zip_name)
+            #r = requests.get(artifact_zip_url)
+            #print(r.headers)
+            #with open(artifact_zip_name, "wb") as f:
+            #    f.write(r.content)
         else:
             status_print(f"{artifact_zip_name} already exists in this folder!")
 
+# Repackage with extra files and formatted file names
 for name in formatted_names:
     if os.path.exists(name):
         # Extract 
@@ -152,11 +172,12 @@ for name in formatted_names:
                             ]:
                             zb.write(extra_file)
 
-        #shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
-        #os.remove(f"raw_{name}")
+        shutil.rmtree(f"{SCRIPT_PATH}/raw_{name}_temp")
+        os.remove(f"raw_{name}")
     else:
         status_print(f"{formatted_name} already exists in this folder!")
 
+# Create Release data
 release_body = "### Release Notes\n\n\
 **Features:**\n\n\
 **Enhancements:**\n\n\
@@ -165,14 +186,13 @@ release_body = "### Release Notes\n\n\
 | Link   | SHA256      |\n\
 |--------|-------------|"
 
-INCLUDE_VT = False
+# Get VirusTotal results
 for name in formatted_names:
-    if INCLUDE_VT:
-        status_print(f"Getting hash for {name}")
-        vt_hash = lib_virustotal.get_vt_hash(name)
-        release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
+    status_print(f"Getting hash for {name}")
+    vt_hash = lib_virustotal.get_vt_hash(name)
+    release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
 
-# Draft release
+# Create draft release
 release_data = {
     "accept": "application/vnd.github.v3+json",
     "owner": f"{DEST_OWNER}",
@@ -185,6 +205,7 @@ release_data = {
     "prerelease": False
 }
 
+# Upload artifacts
 if not lib_github.check_release_exists(release_name):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
@@ -200,7 +221,7 @@ if not lib_github.check_release_exists(release_name):
                 "owner": f"{DEST_OWNER}",
                 "repo": f"{REPO}",
                 "release_id": release_id,
-                "name": formatted_names[name], 
+                "name": formatted_names[name],
                 "label": formatted_names[name]
             }
             params = (
@@ -208,23 +229,11 @@ if not lib_github.check_release_exists(release_name):
               ('label', formatted_names[name]),
             )
             status_print(f"Uploading {formatted_names[name]}...")
-            upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
 
-            if name.find("osx") > -1:
-                upload_data = {
-                    "accept": "application/vnd.github.v3+json",
-                    "owner": f"{DEST_OWNER}",
-                    "repo": f"{REPO}",
-                    "release_id": release_id,
-                    "name": f"{name}", 
-                    "label": name
-                }
-                params = (
-                  ('name', f"{name}"),
-                  ('label', name),
-                )
-                status_print(f"Uploading {name}...")
-                upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, name)
+            # This is adding extra bytes and causing fails on mac archive utility
+            # upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
+
+            os.system(f'curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token {lib_github.GH_TOKEN}" -H "Content-Type: $(file -b --mime-type {formatted_names[name]})" --data-binary @{formatted_names[name]} "{upload_url}?name=$(basename {formatted_names[name]})"')
 
     else:
         print(release_info)

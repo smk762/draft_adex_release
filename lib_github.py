@@ -59,9 +59,14 @@ def create_release(owner, repo, data):
         error_print(r.json())
     return r.json()
 
+
+# This is adding extra bytes and causing fails on mac archive utility
 # https://docs.github.com/en/rest/reference/releases#upload-a-release-asset
 def upload_release_asset(upload_url, upload_data, params, file_with_path):
     files = {"file": (os.path.basename(file_with_path), open(os.path.abspath(file_with_path), "rb"))}
+    gh.headers.update({
+        'content-type': 'application/zip',
+        })
     r = gh.post(upload_url, json=upload_data, params=params, files=files)
     return r.json()
 
