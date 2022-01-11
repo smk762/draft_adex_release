@@ -2,10 +2,8 @@
 import os
 import sys
 import json
-import pycurl
 import requests
 import shutil
-import wget
 
 from zipfile import ZipFile
 import io
