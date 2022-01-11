@@ -5,16 +5,17 @@ A simple script to translate AtomicDEX-Desktop CI artefacts from Github Actions 
 ## Setup
 
 - Run `pip3 install -r requirements.txt`
-- Create a `.env` file, and enter values for `VIRUSTOTAL_API_KEY`, `GH_TOKEN` and `GH_USER`
+- Create a `.env` file, and enter values for `VIRUSTOTAL_API_KEY`, `GH_TOKEN`, `GH_USER` and `GH_EMAIL`
 
 ## Usage
 
 - Run `./draft_release.py`
 - Input a valid Github Actions run number (e.g. `1647045169`)
 - Input a release version (e.g. `0.5.x`)
-
+- Input repo (e.g. `AtomicDEX-desktop`)
+- Input org to download artifacts from (e.g. `KomodoPlatform`)
+- Input org to upload artifacts to (e.g. `smk762`)
 
 ## Todo
 
-- Create tag matching release
 - Add tests
