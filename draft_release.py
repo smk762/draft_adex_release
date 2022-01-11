@@ -50,7 +50,7 @@ def get_new_name(fn, formatted_name):
 
 # Get Inputs
 print("")
-'''
+
 RUN_NUMBER = color_input("Enter Github run number: ")
 VERSION = color_input("Enter release version (e.g. 0.5.4): ")
 REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
@@ -63,7 +63,7 @@ VERSION = "0.5.test"
 REPO = "atomicDEX-Desktop"
 SRC_OWNER = "KomodoPlatform"
 DEST_OWNER = "smk762"
-
+'''
 
 valid_token = False
 # Validate input to protect against injection
