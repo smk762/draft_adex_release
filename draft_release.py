@@ -42,11 +42,13 @@ def get_formatted_name(name):
         fn_std = f"{fn_std}-portable"
     return project_name, f"{fn_std}.{ext}"
 
-def get_new_name(fn, formatted_name):
-    ext = '.'.join(fn.split(".")[-1:])
-    # drop os and type
-    fn = '-'.join(formatted_name.split("-")[:-2])
-    return f"{fn}.{ext}"
+def get_new_name(file, formatted_name):
+    print(f"file: {file}")
+    new_name = '.'.join(formatted_name.split('.')[:-1]) +"."+file.split(".")[1]
+    for i in ['-dmg','-appimage']:
+        new_name = new_name.replace(i, '')
+    print(f"new_name: {new_name}")
+    return new_name
 
 # Get Inputs
 print("")
@@ -144,25 +146,10 @@ for a in r.json()['artifacts']:
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
 
-            # This works if transfering with USB
-            # os.system(f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}')
             dl_command = f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}'
             args = shlex.split(dl_command)
             subprocess.run(args)
 
-            # This is causing problems with extra bytes in mac archive utility
-            #r = gh.head(artifact_zip_url)
-            #artifact_zip_url = r.headers["Location"]
-            #r = gh.get(artifact_zip_url)
-            #print(r.headers)
-            #fn = r.headers['Content-Disposition'].split("; ")[1].replace("filename=", "")
-            #print(fn)
-            #print(artifact_zip_name)
-            #print(fn == artifact_zip_name)
-            #r = requests.get(artifact_zip_url)
-            #print(r.headers)
-            #with open(artifact_zip_name, "wb") as f:
-            #    f.write(r.content)
         else:
             status_print(f"{artifact_zip_name} already exists in this folder!")
 
@@ -179,13 +166,8 @@ for name in formatted_names:
             status_print(f"Repackaging as {formatted_names[name]}...")
             with ZipFile(f"{formatted_names[name]}", 'w') as zb:
                 for file in os.listdir(extract_path):
-                    print(f"file: {file}")
-                    #new_name = get_new_name(file, name)
-                    #new_name = get_formatted_name(file)
-                    new_name = '.'.join(formatted_names[name].split('.')[:-1]) +"."+file.split(".")[1]
-                    for i in ['-dmg','-appimage']:
-                        new_name = new_name.replace(i, '')
-                    print(f"new_name: {new_name}")
+
+                    new_name = get_new_name(file, formatted_names[name])
 
                     zb.write(filename=f"{extract_path}/{file}", arcname=new_name)
                     if f"{formatted_names[name]}".lower().find("appimage") > -1:
@@ -197,10 +179,18 @@ for name in formatted_names:
                             print(extra_file)
                             zb.write(extra_file)
 
+        if formatted_names[name].endswith("portable.zip"):
+            zipname = formatted_names[name].split(".zip")[0]
+            os.rename(formatted_names[name], f"{zipname}_old.zip")
+            print(f"unzip repackaging {zipname}")
+            with ZipFile(f"{zipname}_old.zip", 'r') as zc:
+                zc.extractall(f"{SCRIPT_PATH}")
+            os.remove(f"{zipname}_old.zip")
+
+
         shutil.rmtree(f"{SCRIPT_PATH}/temp_{formatted_names[name]}")
-        #os.remove(name)
     else:
-        status_print(f"{formatted_name} already exists in this folder!")
+        status_print(f"{formatted_names[name]} already exists in this folder!")
 
 # Create Release data
 release_body = "### Release Notes\n\n\
@@ -224,7 +214,7 @@ release_data = {
     "repo": f"{REPO}",
     "tag_name": release_tag,
     "target_commitish": release_branch,
-    "name": f"{release_name}-autotest", 
+    "name": f"{release_name}", 
     "body": release_body,
     "draft": True,
     "prerelease": False
