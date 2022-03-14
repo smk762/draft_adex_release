@@ -179,15 +179,22 @@ for name in formatted_names:
             status_print(f"Repackaging as {formatted_names[name]}...")
             with ZipFile(f"{formatted_names[name]}", 'w') as zb:
                 for file in os.listdir(extract_path):
+                    print(f"file: {file}")
                     #new_name = get_new_name(file, name)
-                    new_name = f"{file}"
+                    #new_name = get_formatted_name(file)
+                    new_name = '.'.join(formatted_names[name].split('.')[:-1]) +"."+file.split(".")[1]
+                    for i in ['-dmg','-appimage']:
+                        new_name = new_name.replace(i, '')
+                    print(f"new_name: {new_name}")
+
                     zb.write(filename=f"{extract_path}/{file}", arcname=new_name)
-                    if f"{name}".find("appimage") > -1:
+                    if f"{formatted_names[name]}".lower().find("appimage") > -1:
                         for extra_file in [
                                 "README.txt",
                                 "prerequisites.sh",
                                 "make_executable.gif"
                             ]:
+                            print(extra_file)
                             zb.write(extra_file)
 
         shutil.rmtree(f"{SCRIPT_PATH}/temp_{formatted_names[name]}")
@@ -206,9 +213,9 @@ release_body = "### Release Notes\n\n\
 
 # Get VirusTotal results
 for name in formatted_names:
-    status_print(f"Getting hash for {name}")
-    vt_hash = lib_virustotal.get_vt_hash(name)
-    release_body = f"{release_body}\n| [{name}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
+    status_print(f"Getting hash for {formatted_names[name]}")
+    vt_hash = lib_virustotal.get_vt_hash(formatted_names[name])
+    release_body = f"{release_body}\n| [{formatted_names[name]}](https://www.virustotal.com/gui/file/{vt_hash}) | `{vt_hash}` |"
 
 # Create draft release
 release_data = {
