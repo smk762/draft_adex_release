@@ -42,17 +42,11 @@ def get_formatted_name(name):
         fn_std = f"{fn_std}-portable"
     return project_name, f"{fn_std}.{ext}"
 
-def get_new_name(fn, formatted_name):
-    ext = '.'.join(fn.split(".")[-1:])
-    # drop os and type
-    fn = '-'.join(formatted_name.split("-")[:-2])
-    return f"{fn}.{ext}"
 
 # Get Inputs
 print("")
-
 RUN_NUMBER = color_input("Enter Github run number: ")
-VERSION = color_input("Enter release version (e.g. 0.5.4): ")
+VERSION = color_input("Enter release version (e.g. 0.5.5): ")
 REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
 SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
 DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
@@ -66,6 +60,7 @@ DEST_OWNER = "smk762"
 '''
 
 valid_token = False
+
 # Validate input to protect against injection
 for i in ["ghp_", "gho_", "ghu_", "ghs_", "ghr_"]:
     if lib_github.GH_TOKEN.startswith(i):
@@ -78,8 +73,6 @@ for i in [" ", ";", "passwd", "*"]:
 if not valid_token:
     print("Invalid github token!")
     sys.exit()
-
-
 
 # Prepare run
 run_url = f"{lib_github.base_url}/repos/{SRC_OWNER}/{REPO}/actions/runs/{RUN_NUMBER}"
@@ -143,64 +136,58 @@ for a in r.json()['artifacts']:
         
         if not os.path.exists(artifact_zip_name):
             status_print(f"Downloading {artifact_zip_name}...")
-
-            # This works if transfering with USB
-            # os.system(f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}')
             dl_command = f'wget -q --header="Authorization: token {lib_github.GH_TOKEN}" -O {artifact_zip_name} {artifact_zip_url}'
             args = shlex.split(dl_command)
             subprocess.run(args)
 
-            # This is causing problems with extra bytes in mac archive utility
-            #r = gh.head(artifact_zip_url)
-            #artifact_zip_url = r.headers["Location"]
-            #r = gh.get(artifact_zip_url)
-            #print(r.headers)
-            #fn = r.headers['Content-Disposition'].split("; ")[1].replace("filename=", "")
-            #print(fn)
-            #print(artifact_zip_name)
-            #print(fn == artifact_zip_name)
-            #r = requests.get(artifact_zip_url)
-            #print(r.headers)
-            #with open(artifact_zip_name, "wb") as f:
-            #    f.write(r.content)
         else:
             status_print(f"{artifact_zip_name} already exists in this folder!")
+
+def get_new_name(file, formatted_name):
+    print(f"file: {file}")
+    new_name = '.'.join(formatted_names[name].split('.')[:-1]) +"."+file.split(".")[1]
+    for i in ['-dmg','-appimage']:
+        new_name = new_name.replace(i, '')
+    print(f"new_name: {new_name}")
+    return new_name
 
 # Repackage with extra files and formatted file names
 for name in formatted_names:
     if os.path.exists(name):
+
         # Extract 
         with ZipFile(name, 'r') as za:
             extract_path = f"{SCRIPT_PATH}/temp_{formatted_names[name]}"
             za.extractall(extract_path)
             files = os.listdir(extract_path)
-            # rename as required
 
+            # rename as required
             status_print(f"Repackaging as {formatted_names[name]}...")
             with ZipFile(f"{formatted_names[name]}", 'w') as zb:
                 for file in os.listdir(extract_path):
-                    print(f"file: {file}")
-                    #new_name = get_new_name(file, name)
-                    #new_name = get_formatted_name(file)
-                    new_name = '.'.join(formatted_names[name].split('.')[:-1]) +"."+file.split(".")[1]
-                    for i in ['-dmg','-appimage']:
-                        new_name = new_name.replace(i, '')
-                    print(f"new_name: {new_name}")
+                    new_name = get_new_name(file, formatted_names[name])
+                    if file != 'bin.zip':
+                        zb.write(filename=f"{extract_path}/{file}", arcname=new_name)
+                        if f"{formatted_names[name]}".lower().find("appimage") > -1:
+                            for extra_file in [
+                                    "README.txt",
+                                    "prerequisites.sh",
+                                    "make_executable.gif"
+                                ]:
+                                print(extra_file)
+                                zb.write(extra_file)
 
-                    zb.write(filename=f"{extract_path}/{file}", arcname=new_name)
-                    if f"{formatted_names[name]}".lower().find("appimage") > -1:
-                        for extra_file in [
-                                "README.txt",
-                                "prerequisites.sh",
-                                "make_executable.gif"
-                            ]:
-                            print(extra_file)
-                            zb.write(extra_file)
+        # resolve ubuntu portable same name zip inside zip
+        if f"{formatted_names[name]}".endswith("ubuntu-portable.zip"):
+            os.remove(formatted_names[name])
+            os.rename(f"{extract_path}/bin.zip", formatted_names[name])
+
 
         shutil.rmtree(f"{SCRIPT_PATH}/temp_{formatted_names[name]}")
-        #os.remove(name)
     else:
         status_print(f"{formatted_name} already exists in this folder!")
+
+
 
 # Create Release data
 release_body = "### Release Notes\n\n\
@@ -255,9 +242,6 @@ if not lib_github.check_release_exists(release_name):
             )
             status_print(f"Uploading {formatted_names[name]}...")
 
-            # This is adding extra bytes and causing fails on mac archive utility
-            # upload_reponse = lib_github.upload_release_asset(upload_url, upload_data, params, formatted_names[name])
-
             args = [
                 'curl',
                 '-H',
@@ -271,8 +255,5 @@ if not lib_github.check_release_exists(release_name):
                 f'{upload_url}?name={formatted_names[name]}'
             ]
             subprocess.run(args)
-
-            #os.system(f'curl -H "Accept: application/vnd.github.v3+json" -H "Authorization: token {lib_github.GH_TOKEN}" -H "Content-Type: $(file -b --mime-type {formatted_names[name]})" --data-binary @{formatted_names[name]} "{upload_url}?name=$(basename {formatted_names[name]})"')
-
     else:
         print(release_info)
