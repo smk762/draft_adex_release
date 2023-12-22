@@ -38,8 +38,8 @@ def summarise_activity_by_repo(activity=None):
         repo = event["repo"]["name"]
 
 
-def check_release_exists(release_name):
-    r = gh.get(f"{base_url}/repos/smk762/atomicDEX-Desktop/releases").json()
+def check_release_exists(release_name, dest_owner, dest_repo):
+    r = gh.get(f"{base_url}/repos/{dest_owner}/{dest_repo}/releases").json()
     for release in r:
         if release["name"] == release_name:
             status_print(f"A release with the name '{release_name}' already exists at {release['html_url']}!")

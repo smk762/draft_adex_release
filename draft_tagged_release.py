@@ -58,6 +58,8 @@ VERSION = color_input("Enter release version (e.g. 0.5.4): ")
 REPO = color_input("Enter repository name (e.g. atomicDEX-Desktop): ")
 SRC_OWNER = color_input("Enter archive source repository organisation (e.g. KomodoPlatform): ")
 DEST_OWNER = color_input("Enter release destination repository organisation (e.g. smk762): ")
+TAG_SHA = color_input("Enter release tag sha (leave empty to create tag): ")
+release_tag = color_input("Enter release tag (leave empty to create tag): ")
 DEST_REPO = REPO
 if DEST_OWNER == "GLEECBTC": DEST_REPO = "GleecDEX-Desktop"
 
@@ -100,35 +102,36 @@ else:
     error_print(f"{run_html_url} is not valid!")
     sys.exit()
 
-# Create tag
-tag_data = {
-    "accept": "application/vnd.github.v3+json",
-    "owner": f"{DEST_OWNER}",
-    "repo": f"{DEST_REPO}",
-    "tag": release_tag,
-    "message": f"create {release_tag}",
-    "object": f"{commit_hash}", 
-    "type": "commit",
-    "tagger": {
-        "name": lib_github.GH_USER,
-        "email": lib_github.GH_EMAIL
+if not release_tag:
+    # Create tag
+    tag_data = {
+        "accept": "application/vnd.github.v3+json",
+        "owner": f"{DEST_OWNER}",
+        "repo": f"{DEST_REPO}",
+        "tag": release_tag,
+        "message": f"create {release_tag}",
+        "object": f"{commit_hash}", 
+        "type": "commit",
+        "tagger": {
+            "name": lib_github.GH_USER,
+            "email": lib_github.GH_EMAIL
+        }
     }
-}
-print(tag_data)
-tag_resp = lib_github.create_tag(f"{DEST_OWNER}", f"{REPO}", tag_data)
-print(tag_resp)
-tag_sha = tag_resp["sha"]
+    print(tag_data)
+    tag_resp = lib_github.create_tag(f"{DEST_OWNER}", f"{REPO}", tag_data)
+    print(tag_resp)
+    tag_sha = tag_resp["sha"]
 
-# Create reference
-ref_data = {
-    "accept": "application/vnd.github.v3+json",
-    "owner": f"{DEST_OWNER}",
-    "repo": f"{DEST_REPO}",
-    "ref": f"refs/tags/{release_tag}",
-    "sha": f"{tag_sha}"
-}
+    # Create reference
+    ref_data = {
+        "accept": "application/vnd.github.v3+json",
+        "owner": f"{DEST_OWNER}",
+        "repo": f"{DEST_REPO}",
+        "ref": f"refs/tags/{release_tag}",
+        "sha": f"{tag_sha}"
+    }
 
-ref_resp = lib_github.create_reference(f"{DEST_OWNER}", f"{REPO}", ref_data)
+    ref_resp = lib_github.create_reference(f"{DEST_OWNER}", f"{REPO}", ref_data)
 
 # Get artifacts info
 status_print(f"Getting archives from {run_html_url}...")
@@ -137,7 +140,7 @@ r = gh.get(artefacts_url)
 # Download artifacts
 formatted_names = {}
 for a in r.json()['artifacts']:
-    if not a["name"].endswith('.zst') and a["name"].find("debug") == -1:
+    if not a["name"].endswith('.zst') and a["name"].find("debug") == -1::
         artifact_zip_name = f"{a['name']}.zip"
         artifact_zip_url = a["archive_download_url"]
         project, formatted_name = get_formatted_name(artifact_zip_name)
@@ -224,7 +227,7 @@ release_data = {
 }
 
 # Upload artifacts
-if not lib_github.check_release_exists(release_name, DEST_OWNER, DEST_REPO):
+if not lib_github.check_release_exists(release_name, DEST_OWNER):
     table_print(f"Release name: {release_name}")
     table_print(f"Release tag: {release_tag}")
     table_print(f"Release branch: {release_branch}")
