@@ -31,7 +31,7 @@ def get_formatted_name(name):
     raw_fn = fn.split("-")
     project_name = f"{raw_fn[0]}"
 
-    fn_std = f"{project_name}-desktop-{VERSION}-beta-{opsys}"
+    fn_std = f"{project_name}-wallet-{VERSION}-beta-{opsys}"
     if "installer" in name:
         fn_std = f"{fn_std}-installer"
     elif "dmg" in name:
